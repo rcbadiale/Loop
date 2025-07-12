@@ -71,22 +71,7 @@ class KeybindMonitor {
             return Unmanaged.passUnretained(cgEvent)
         }
 
-        flagsEventMonitor = CGEventMonitor(eventMask: .flagsChanged) { cgEvent in
-            if cgEvent.type == .flagsChanged,
-               let event = NSEvent(cgEvent: cgEvent),
-               !Defaults[.triggerKey].contains(where: { $0.baseModifier == event.keyCode.baseModifier }) {
-                self.checkForModifier(event, .kVK_Shift, .shift)
-                self.checkForModifier(event, .kVK_Command, .command)
-                self.checkForModifier(event, .kVK_Option, .option)
-                self.checkForModifier(event, .kVK_Function, .function)
-
-                self.performKeybind(event: event)
-            }
-            return Unmanaged.passUnretained(cgEvent)
-        }
-
         eventMonitor!.start()
-        flagsEventMonitor!.start()
     }
 
     func stop() {
@@ -95,9 +80,6 @@ class KeybindMonitor {
 
         eventMonitor?.stop()
         eventMonitor = nil
-
-        flagsEventMonitor?.stop()
-        flagsEventMonitor = nil
     }
 
     func isShiftPressed() -> Bool {
@@ -106,18 +88,6 @@ class KeybindMonitor {
 
     @discardableResult
     private func performKeybind(event: NSEvent) -> Bool {
-        if event.type == .keyUp {
-            // If the current key up event is within 100 ms of the last key up event, return.
-            // This is used when the user is pressing 2+ keys so that it doesn't switch back
-            // to the one key direction when they're letting go of the keys.
-            if abs(lastKeyReleaseTime.timeIntervalSinceNow) < 0.1 {
-                print("performKeybind: returning true due to key release")
-                return true
-            }
-            lastKeyReleaseTime = Date.now
-            return false
-        }
-
         if pressedKeys.contains(.kVK_Escape) {
             Notification.Name.forceCloseLoop.post()
             print("performKeybind: returning true due to force close")
